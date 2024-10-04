@@ -1,290 +1,85 @@
-import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Text, Image, Dimensions } from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { DeviceMotion } from "expo-sensors";
+import React, { useState } from 'react';
+import { View, Dimensions } from 'react-native';
+import { CameraView } from 'expo-camera';
+import { useDeviceMotion } from '../hooks/useDeviceMotion';
+import Radar from '../components/Radar';
+import Satellite from '../components/Satellite';
+import { isOverlapping, normalizeDifference } from '../utils/satellite-tracker.utils';
+import { 
+  RADAR_WIDTH,
+  RADAR_HEIGHT,
+  SATELLITE_WIDTH,
+  SATELLITE_HEIGHT,
+  AZIMUTH_THRESHOLD,
+  ELEVATION_THRESHOLD,
+  ALIGNMENT_THRESHOLD,
+  ALPHA_SMOOTHING_FACTOR
+} from '../constants/satellite-tracker.const';
+import GuidanceArrows from '../components/GuidanceArrows';
 
-type Subscription = {
-  remove: () => void;
-};
-
-const alpha = 0.1;
-
-const { width, height } = Dimensions.get("window");
-
-const radarWidth = 160;
-const radarHeight = 160;
-const satelliteWidth = 50;
-const satelliteHeight = 50;
-const arrowSize = 50;
+const FOUND_SATELLITE_MESSAGE = 'Melhor posição encontrada!';
+const SATELLITE_IS_CLOSE_MESSAGE = 'O satélite está próximo!';
 
 const CameraScreen: React.FC = () => {
-  const [smoothedAzimuth, setSmoothedAzimuth] = useState<number>(0);
-  const [smoothedElevation, setSmoothedElevation] = useState<number>(0);
-  const [permission] = useCameraPermissions();
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+  const [screenHeight, setScreenHeight] = useState(Dimensions.get('window').height);
 
-  useEffect(() => {
-    let motionSubscription: Subscription | null = null;
-  
-    motionSubscription = DeviceMotion.addListener((data) => {
-      if (data.rotation) {
-        // Convert radians to degrees
-        let alphaDeg = (data.rotation.alpha * 180) / Math.PI;
-        let betaDeg = (data.rotation.beta * 180) / Math.PI;
+  const { azimuth, elevation } = useDeviceMotion(ALPHA_SMOOTHING_FACTOR);
 
-        // Normalize alpha to [0, 360]
-        if (alphaDeg < 0) {
-          alphaDeg += 360;
-        }
-
-        // Apply low-pass filter
-        setSmoothedAzimuth((prev) => prev + alpha * (alphaDeg - prev));
-        setSmoothedElevation((prev) => prev + alpha * (betaDeg - prev));
-      }
-    });
-
-    DeviceMotion.setUpdateInterval(100);
-
-    return () => {
-      if (motionSubscription) {
-        motionSubscription.remove();
-      }
-    }
-  }, []);
-
-  const getAzimuthAndElevation = () => {
-    // let { alpha, beta, gamma } = orientationData;
-    const { azimuth, elevation } = {
-      azimuth: smoothedAzimuth,
-      elevation: smoothedElevation
-    }
-
-    return { azimuth, elevation };
+  // Satellite's azimuth and elevation
+  const SATELLITE_POSITION_MOCK_DATA = {
+    azimuth: 120,
+    elevation: 30,
   };
 
-  const { azimuth, elevation } = getAzimuthAndElevation();
+  let azimuthDiff = normalizeDifference(SATELLITE_POSITION_MOCK_DATA.azimuth - azimuth);
+  let elevationDiff = normalizeDifference(SATELLITE_POSITION_MOCK_DATA.elevation - elevation);
 
-  const satellitePosition = {
-    azimuth: 120,
-    elevation: 30
-  }
-
-  // Calculate differences
-  let azimuthDiff = satellitePosition.azimuth - azimuth;
-  let elevationDiff = satellitePosition.elevation - elevation;
-
-  // Normalize differences to [-180, 180]
-  if (azimuthDiff > 180) azimuthDiff -= 360;
-  if (azimuthDiff < -180) azimuthDiff += 360;
-
-  // Determine visibility and alignment
-  const azimuthThreshold = 45;     // degrees
-  const elevationThreshold = 30;   // degrees
-  const alignmentThreshold = 15;    // degrees
+  const radarX = (screenWidth - RADAR_WIDTH) / 2;
+  const radarY = (screenHeight - RADAR_HEIGHT) / 2;
 
   const isSatelliteVisible =
-    Math.abs(azimuthDiff) <= azimuthThreshold &&
-    Math.abs(elevationDiff) <= elevationThreshold;
+  Math.abs(azimuthDiff) <= AZIMUTH_THRESHOLD &&
+  Math.abs(elevationDiff) <= ELEVATION_THRESHOLD;
 
   const isSatelliteAligned =
-    Math.abs(azimuthDiff) <= alignmentThreshold &&
-    Math.abs(elevationDiff) <= alignmentThreshold;
+    Math.abs(azimuthDiff) <= ALIGNMENT_THRESHOLD &&
+    Math.abs(elevationDiff) <= ALIGNMENT_THRESHOLD;
 
-  // Calculate positions
-  const radarX = (width - radarWidth) / 2;
-  const radarY = (height - radarHeight) / 2;
+  const satelliteInitialX = (screenWidth - SATELLITE_WIDTH) / 2;
+  const satelliteInitialY = (screenHeight - SATELLITE_HEIGHT) / 2;
 
-  const satelliteInitialX = (width - satelliteWidth) / 2;
-  const satelliteInitialY = (height - satelliteHeight) / 2;
-
-  const satelliteTranslateX = (azimuthDiff / azimuthThreshold) * (width / 2);
-  const satelliteTranslateY = (-elevationDiff / elevationThreshold) * (height / 2);
+  const satelliteTranslateX = (azimuthDiff / AZIMUTH_THRESHOLD) * (screenWidth / 2);
+  const satelliteTranslateY = (elevationDiff / ELEVATION_THRESHOLD) * (screenHeight / 2);
 
   const satelliteX = satelliteInitialX + satelliteTranslateX;
   const satelliteY = satelliteInitialY + satelliteTranslateY;
 
-  // Define bounding rectangles
-  const radarRect = {
-    x: radarX,
-    y: radarY,
-    width: radarWidth,
-    height: radarHeight,
-  };
+  const radarRect = { x: radarX, y: radarY, width: RADAR_WIDTH, height: RADAR_HEIGHT };
+  const satelliteRect = { x: satelliteX, y: satelliteY, width: SATELLITE_WIDTH, height: SATELLITE_HEIGHT };
 
-  const satelliteRect = {
-    x: satelliteX,
-    y: satelliteY,
-    width: satelliteWidth,
-    height: satelliteHeight,
-  };
-
-  // Function to check overlap
-  const isOverlapping = (rect1: any, rect2: any) => {
-    return !(
-      rect1.x + rect1.width < rect2.x ||
-      rect1.x > rect2.x + rect2.width ||
-      rect1.y + rect1.height < rect2.y ||
-      rect1.y > rect2.y + rect2.height
-    );
-  };
-
-  // Check if the satellite overlaps the radar
   const satelliteOverlapsRadar = isOverlapping(radarRect, satelliteRect);
-
-  // Set the radar tint color
   const radarTintColor = satelliteOverlapsRadar ? 'green' : 'white';
 
-  // Set the message
   let message = '';
-  if (satelliteOverlapsRadar) {
-    message = 'Melhor posição encontrada!';
-  } else if (isSatelliteVisible) {
-    message = 'O satélite está próximo!';
-  }
-
-  if (!permission) {
-    return <View />;
-  }
-  if (!permission?.granted) {
-    return <Text>No access to camera</Text>;
-  }
-
+  if (satelliteOverlapsRadar) message = FOUND_SATELLITE_MESSAGE;
+  else if (isSatelliteVisible) message = SATELLITE_IS_CLOSE_MESSAGE;
+  
   return (
-    <View style={styles.container}>
-      <CameraView style={styles.camera} facing="back">
-        {/* Radar Overlay */}
-        <View
-          style={[
-            styles.radarContainer,
-            {
-              left: radarX,
-              top: radarY,
-            },
-          ]}
-        >
-          <Image
-            source={require('../assets/radar.png')}
-            style={[
-              styles.radar,
-              { tintColor: radarTintColor },
-            ]}
-          />
-          {message !== '' && (
-            <Text style={styles.alignmentText}>{message}</Text>
-          )}
-        </View>
-
-        {/* Display satellite image if visible */}
-        {isSatelliteVisible && (
-          <Image
-            source={require('../assets/satellite.png')}
-            style={[
-              styles.satellite,
-              {
-                left: satelliteX,
-                top: satelliteY,
-              },
-            ]}
-          />
-        )}
-
-        {/* Guidance Arrows */}
-        {!isSatelliteVisible && (
-          <View style={styles.arrowContainer}>
-            {azimuthDiff < -azimuthThreshold && (
-              <Image
-                source={require('../assets/arrow.png')}
-                style={[styles.arrow, styles.arrowRight]}
-              />
-            )}
-            {azimuthDiff > azimuthThreshold && (
-              <Image
-                source={require('../assets/arrow.png')}
-                style={[styles.arrow, styles.arrowLeft]}
-              />
-            )}
-            {elevationDiff < -elevationThreshold && (
-              <Image
-                source={require('../assets/arrow.png')}
-                style={[styles.arrow, styles.arrowUp]}
-              />
-            )}
-            {elevationDiff > elevationThreshold && (
-              <Image
-                source={require('../assets/arrow.png')}
-                style={[styles.arrow, styles.arrowDown]}
-              />
-            )}
-          </View>
-        )}
+    <View style={{ flex: 1 }}>
+      <CameraView style={{ flex: 1 }}>
+        <Radar radarX={radarX} radarY={radarY} radarTintColor={radarTintColor} message={message} />
+        <Satellite satelliteX={satelliteX} satelliteY={satelliteY} isVisible={isSatelliteVisible} />
+        <GuidanceArrows 
+          azimuthDiff={azimuthDiff} 
+          elevationDiff={elevationDiff} 
+          isSatelliteVisible={isSatelliteVisible} 
+          screenHeight={screenHeight} 
+          screenWidth={screenWidth} 
+        />
       </CameraView>
     </View>
   );
 };
 
 export default CameraScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  camera: {
-    flex: 1,
-  },
-  radarContainer: {
-    position: 'absolute',
-    width: radarWidth,
-    height: radarHeight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radar: {
-    width: radarWidth,
-    height: radarHeight,
-    resizeMode: 'contain',
-  },
-  alignmentText: {
-    color: 'white',
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  satellite: {
-    position: 'absolute',
-    width: satelliteWidth,
-    height: satelliteHeight,
-    resizeMode: 'contain',
-  },
-  arrowContainer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrow: {
-    position: 'absolute',
-    width: arrowSize,
-    height: arrowSize,
-    resizeMode: 'contain',
-  },
-  arrowUp: {
-    left: (width - arrowSize) / 2,
-    top: 10,
-    transform: [{ rotate: '270deg' }]
-  },
-  arrowDown: {
-    left: (width - arrowSize) / 2,
-    bottom: 10,
-    transform: [{ rotate: '90deg' }]
-  },
-  arrowLeft: {
-    left: 10,
-    top: (height - arrowSize) / 2,
-    transform: [{ rotate: '180deg' }]
-  },
-  arrowRight: {
-    right: 10,
-    top: (height - arrowSize) / 2,
-  },
-});
