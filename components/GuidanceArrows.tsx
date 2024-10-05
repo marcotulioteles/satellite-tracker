@@ -16,49 +16,43 @@ const GuidanceArrows: React.FC<GuidanceArrowsProps> = ({
     screenHeight,
     screenWidth
 }) => {
-    if (isSatelliteVisible) return null
-
     return (
         <View style={styles.arrowContainer}>
-            {azimuthDiff < -AZIMUTH_THRESHOLD && (
-              <Image
+            <Image
                 source={require('../assets/arrow.png')}
                 style={[styles.arrow, {
                     right: 10,
                     top: (screenHeight - ARROW_SIZE) / 2,
+                    opacity: !isSatelliteVisible && azimuthDiff < -AZIMUTH_THRESHOLD ? 1 : 0
                   }]}
               />
-            )}
-            {azimuthDiff > AZIMUTH_THRESHOLD && (
-              <Image
+            <Image
                 source={require('../assets/arrow.png')}
                 style={[styles.arrow, {
                     left: 10,
                     top: (screenHeight - ARROW_SIZE) / 2,
-                    transform: [{ rotate: '180deg' }]
+                    transform: [{ rotate: '180deg' }],
+                    opacity: !isSatelliteVisible && azimuthDiff > AZIMUTH_THRESHOLD ? 1 : 0
                   }]}
               />
-            )}
-            {elevationDiff < -ELEVATION_THRESHOLD && (
-              <Image
+            <Image
                 source={require('../assets/arrow.png')}
                 style={[styles.arrow, {
                     left: (screenWidth - ARROW_SIZE) / 2,
                     top: 10,
-                    transform: [{ rotate: '270deg' }]
+                    transform: [{ rotate: '270deg' }],
+                    opacity: !isSatelliteVisible && elevationDiff < -ELEVATION_THRESHOLD ? 1 : 0
                   }]}
               />
-            )}
-            {elevationDiff > ELEVATION_THRESHOLD && (
-              <Image
+            <Image
                 source={require('../assets/arrow.png')}
                 style={[styles.arrow, {
                     left: (screenWidth - ARROW_SIZE) / 2,
                     bottom: 10,
-                    transform: [{ rotate: '90deg' }]
+                    transform: [{ rotate: '90deg' }],
+                    opacity: !isSatelliteVisible && elevationDiff > ELEVATION_THRESHOLD ? 1 : 0
                   }]}
               />
-            )}
           </View>
     )
 }

@@ -69,15 +69,15 @@ const CameraScreen: React.FC = () => {
     <View style={{ flex: 1 }}>
       <CameraView style={{ flex: 1 }}>
         <Radar radarX={radarX} radarY={radarY} radarTintColor={radarTintColor} message={message} />
-        <Satellite satelliteX={satelliteX} satelliteY={satelliteY} isVisible={isSatelliteVisible} />
-        <GuidanceArrows 
-          azimuthDiff={azimuthDiff} 
-          elevationDiff={elevationDiff} 
-          isSatelliteVisible={isSatelliteVisible} 
-          screenHeight={screenHeight} 
-          screenWidth={screenWidth} 
-        />
       </CameraView>
+      <Satellite satelliteX={satelliteX} satelliteY={satelliteY} isVisible={isSatelliteVisible} />
+      <GuidanceArrows 
+        azimuthDiff={azimuthDiff} 
+        elevationDiff={elevationDiff} 
+        isSatelliteVisible={isSatelliteVisible} 
+        screenHeight={screenHeight} 
+        screenWidth={screenWidth} 
+      />
     </View>
   );
 };

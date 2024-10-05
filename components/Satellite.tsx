@@ -9,8 +9,6 @@ interface SatelliteProps {
 }
 
 const Satellite: React.FC<SatelliteProps> = ({ satelliteX, satelliteY, isVisible }) => {
-  if (!isVisible) return null;
-
   return (
     <Image
       source={require('../assets/satellite.png')}
@@ -21,6 +19,7 @@ const Satellite: React.FC<SatelliteProps> = ({ satelliteX, satelliteY, isVisible
         width: SATELLITE_WIDTH,
         height: SATELLITE_HEIGHT,
         resizeMode: 'contain',
+        opacity: isVisible ? 1 : 0
       }}
     />
   );

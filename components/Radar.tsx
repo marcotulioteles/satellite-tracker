@@ -31,7 +31,7 @@ const Radar: React.FC<RadarProps> = ({ radarX, radarY, radarTintColor, message }
           resizeMode: 'contain',
         }}
       />
-      {message && <Text style={{ color: 'white', marginTop: 10 }}>{message}</Text>}
+      <Text style={{ color: 'white', marginTop: 10, opacity: message !== '' ? 1 : 0 }}>{message}</Text>
     </View>
   );
 };

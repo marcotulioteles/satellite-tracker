@@ -1,7 +1,7 @@
 export const RADAR_WIDTH = 160;
 export const RADAR_HEIGHT = 160;
-export const SATELLITE_WIDTH = 50;
-export const SATELLITE_HEIGHT = 50;
+export const SATELLITE_WIDTH = 60;
+export const SATELLITE_HEIGHT = 60;
 export const ARROW_SIZE = 50;
 
 export const AZIMUTH_THRESHOLD = 45;   // degrees
